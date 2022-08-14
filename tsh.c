@@ -1,6 +1,4 @@
-/* 
- * tsh - A tiny shell program with job control
- */
+/* tsh - A tiny shell program with job control*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -103,7 +101,7 @@ int main(int argc, char **argv)
     Signal(SIGTSTP, sigtstp_handler);  /* ctrl-z */
     Signal(SIGCHLD, sigchld_handler);  /* Terminated or stopped child */
 
-    /* This one provides a clean way to kill the shell */
+    /* kill the shell */
     Signal(SIGQUIT, sigquit_handler); 
 
     /* Initialize the job list */
@@ -133,18 +131,43 @@ int main(int argc, char **argv)
     exit(0); /* control never reaches here */
 }
   
-/* 
- * eval - Evaluate the command line that the user has just typed in
- * 
- * If the user has requested a built-in command (quit, jobs, bg or fg)
- * then execute it immediately. Otherwise, fork a child process and
- * run the job in the context of the child. If the job is running in
- * the foreground, wait for it to terminate and then return.  Note:
- * each child process must have a unique process group ID so that our
- * background children don't receive SIGINT (SIGTSTP) from the kernel
- * when we type ctrl-c (ctrl-z) at the keyboard.  
-*/
+
 void eval(char *cmdline) {
+    char *argv[MAXLINE]; /*Argument list execve()*/
+    char buff[MAXLINE];  /*Hold modified commend line*/
+    int bg;              /*job runs in bg or fg?*/
+    pid_t pid;
+    int state;
+    sigset_t mask_all, mask_one, prev_one;
+    strcpy(buf, cmdline);
+    bg = parseline(cmdline, argv);
+    if (argv[0] == 0) return;
+    if (!builtin_cmd(argv)){
+        sigfillset(&mask_all);
+        sigemptyset(&mask_one);
+        sigaddset(&mask_one, SIGCHLD);
+        sigprocmask(SIG_BLOCK, &mask_one, &prev_one); /*BLOCK SIGCHLD*/
+
+        if((pid == fork()) == 0){
+            sigprocmask(SIG_SETMASK, &prev_one, NULL); /*UNBLOCK SIGCHLD*/
+            if (setpgid(0, 0 < 0)){
+                perror("SETPGID ERROR");
+                exit(0);
+            }
+            if (execve(argv[0], argv, environ) < 0){
+                printf("%s: Comman not found/n", argv[0]);
+                exit(0);
+            }
+        }
+        else{
+            state = bg ? BG : FG;
+            sigprocmask(SIG_BLOCK, &mask_all, NULL); /* parent */
+            addjob(jobs, pid, state, cmdline);
+            sigprocmask(SIG_SETMASK, &prev_one, NULL);  /*UNBLOCK SIGCHLD*/
+        }
+        bg ? printf("[%d] (%d) %s", pid2jid(pid), pid, cmdline) : waitfg(pid);
+    }
+
     return;
 }
 
@@ -155,8 +178,7 @@ void eval(char *cmdline) {
  * argument.  Return true if the user has requested a BG job, false if
  * the user has requested a FG job.  
  */
-int parseline(const char *cmdline, char **argv) 
-{
+int parseline(const char *cmdline, char **argv) {
     static char array[MAXLINE]; /* holds local copy of command line */
     char *buf = array;          /* ptr that traverses command line */
     char *delim;                /* points to first space delimiter */
@@ -166,41 +188,41 @@ int parseline(const char *cmdline, char **argv)
     strcpy(buf, cmdline);
     buf[strlen(buf)-1] = ' ';  /* replace trailing '\n' with space */
     while (*buf && (*buf == ' ')) /* ignore leading spaces */
-	buf++;
+	    buf++;
 
     /* Build the argv list */
     argc = 0;
     if (*buf == '\'') {
-	buf++;
-	delim = strchr(buf, '\'');
+        buf++;
+        delim = strchr(buf, '\'');
     }
     else {
-	delim = strchr(buf, ' ');
+	    delim = strchr(buf, ' ');
     }
 
     while (delim) {
-	argv[argc++] = buf;
-	*delim = '\0';
-	buf = delim + 1;
-	while (*buf && (*buf == ' ')) /* ignore spaces */
-	       buf++;
+        argv[argc++] = buf;
+        *delim = '\0';
+        buf = delim + 1;
+        while (*buf && (*buf == ' ')) /* ignore spaces */
+            buf++;
 
-	if (*buf == '\'') {
-	    buf++;
-	    delim = strchr(buf, '\'');
-	}
-	else {
-	    delim = strchr(buf, ' ');
-	}
+        if (*buf == '\'') {
+            buf++;
+            delim = strchr(buf, '\'');
+        }
+        else {
+            delim = strchr(buf, ' ');
+        }
     }
     argv[argc] = NULL;
     
     if (argc == 0)  /* ignore blank line */
-	return 1;
+	    return 1;
 
-    /* should the job run in the background? */
+   
     if ((bg = (*argv[argc-1] == '&')) != 0) {
-	argv[--argc] = NULL;
+	    argv[--argc] = NULL;
     }
     return bg;
 }
