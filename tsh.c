@@ -240,7 +240,10 @@ int builtin_cmd(char **argv) {
         do_bgfg(argv);
         return 1;
     }
-    
+    if(!strcmp(argv[0], "jobs")){
+        listjobs(jobs);
+        return 1;
+    }
     return 0;    
 }
 
