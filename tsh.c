@@ -1,7 +1,5 @@
 /* 
  * tsh - A tiny shell program with job control
- * 
- * <Put your name and login ID here>
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -25,16 +23,6 @@
 #define BG 2    /* running in background */
 #define ST 3    /* stopped */
 
-/* 
- * Jobs states: FG (foreground), BG (background), ST (stopped)
- * Job state transitions and enabling actions:
- *     FG -> ST  : ctrl-z
- *     ST -> FG  : fg command
- *     ST -> BG  : bg command
- *     BG -> FG  : fg command
- * At most 1 job can be in the FG state.
- */
-
 /* Global variables */
 extern char **environ;      /* defined in libc */
 char prompt[] = "tsh> ";    /* command line prompt (DO NOT CHANGE) */
@@ -52,9 +40,7 @@ struct job_t jobs[MAXJOBS]; /* The job list */
 /* End global variables */
 
 
-/* Function prototypes */
-
-/* Here are the functions that you will implement */
+/* major function prototypes*/
 void eval(char *cmdline);
 int builtin_cmd(char **argv);
 void do_bgfg(char **argv);
@@ -64,7 +50,7 @@ void sigchld_handler(int sig);
 void sigtstp_handler(int sig);
 void sigint_handler(int sig);
 
-/* Here are helper routines that we've provided for you */
+// helper functions
 int parseline(const char *cmdline, char **argv); 
 void sigquit_handler(int sig);
 
@@ -85,39 +71,34 @@ void app_error(char *msg);
 typedef void handler_t(int);
 handler_t *Signal(int signum, handler_t *handler);
 
-/*
- * main - The shell's main routine 
- */
+/* main - The shell's main routine */
 int main(int argc, char **argv) 
 {
     char c;
     char cmdline[MAXLINE];
-    int emit_prompt = 1; /* emit prompt (default) */
+    int emit_prompt = 1; 
 
-    /* Redirect stderr to stdout (so that driver will get all output
-     * on the pipe connected to stdout) */
     dup2(1, 2);
 
     /* Parse the command line */
     while ((c = getopt(argc, argv, "hvp")) != EOF) {
         switch (c) {
-        case 'h':             /* print help message */
+        case 'h':             
             usage();
 	    break;
-        case 'v':             /* emit additional diagnostic info */
+        case 'v':             
             verbose = 1;
 	    break;
-        case 'p':             /* don't print a prompt */
-            emit_prompt = 0;  /* handy for automatic testing */
+        case 'p':            
+            emit_prompt = 0;    
 	    break;
 	default:
             usage();
-	}
+	    }
     }
 
-    /* Install the signal handlers */
+    /* Signal handlers */
 
-    /* These are the ones you will need to implement */
     Signal(SIGINT,  sigint_handler);   /* ctrl-c */
     Signal(SIGTSTP, sigtstp_handler);  /* ctrl-z */
     Signal(SIGCHLD, sigchld_handler);  /* Terminated or stopped child */
@@ -131,22 +112,22 @@ int main(int argc, char **argv)
     /* Execute the shell's read/eval loop */
     while (1) {
 
-	/* Read command line */
-	if (emit_prompt) {
-	    printf("%s", prompt);
-	    fflush(stdout);
-	}
-	if ((fgets(cmdline, MAXLINE, stdin) == NULL) && ferror(stdin))
-	    app_error("fgets error");
-	if (feof(stdin)) { /* End of file (ctrl-d) */
-	    fflush(stdout);
-	    exit(0);
-	}
+        /* Read command line */
+        if (emit_prompt) {
+            printf("%s", prompt);
+            fflush(stdout);
+        }
+        if ((fgets(cmdline, MAXLINE, stdin) == NULL) && ferror(stdin))
+            app_error("fgets error");
+        if (feof(stdin)) { /* End of file (ctrl-d) */
+            fflush(stdout);
+            exit(0);
+        }
 
-	/* Evaluate the command line */
-	eval(cmdline);
-	fflush(stdout);
-	fflush(stdout);
+        /* Evaluate the command line */
+        eval(cmdline);
+        fflush(stdout);
+        fflush(stdout);
     } 
 
     exit(0); /* control never reaches here */
@@ -163,8 +144,7 @@ int main(int argc, char **argv)
  * background children don't receive SIGINT (SIGTSTP) from the kernel
  * when we type ctrl-c (ctrl-z) at the keyboard.  
 */
-void eval(char *cmdline) 
-{
+void eval(char *cmdline) {
     return;
 }
 
