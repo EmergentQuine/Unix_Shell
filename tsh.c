@@ -358,7 +358,7 @@ void sigint_handler(int sig) {
     sigfillset(&mask_all);
     if (pid != 0){
         sigprocmask(SIG_BLOCK, &mask_all, &prev);
-        printf("Job [%d] terminated by SIGNIT.\n", jid);
+        printf("Job [%d] terminated by SIGNIT.\n",jid);
         deletejob(jobs, pid);
         sigprocmask(SIG_SETMASK, &prev, NULL);
         kill(-pid, sig);
@@ -371,8 +371,17 @@ void sigint_handler(int sig) {
  *     the user types ctrl-z at the keyboard. Catch it and suspend the
  *     foreground job by sending it a SIGTSTP.  
  */
-void sigtstp_handler(int sig) 
-{
+void sigtstp_handler(int sig) {
+    int pid = fgpid(jobs), jid = pid2jid(pid);
+    sigset_t mask_all, prev;
+    sigfillset(&mask_all);
+    if (pid != 0){
+        sigprocmask(SIG_BLOCK, &mask_all, &prev);
+        printf("Job [%d] stopped by SIGSTP.\n",jid);
+        (*getjobpid(jobs, pid)).state = ST;
+        sigprocmask(SIG_SETMASK, &prev, NULL);
+        kill(-pid, sig);
+    }
     return;
 }
 
