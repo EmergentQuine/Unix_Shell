@@ -295,8 +295,12 @@ void do_bgfg(char **argv) {
 /* 
  * waitfg - Block until process pid is no longer the foreground process
  */
-void waitfg(pid_t pid)
-{
+void waitfg(pid_t pid){
+    sigset_t mask;
+    sigemptyset(&mask);
+    while (fgpid(jobs) > 0){
+        sigsuspend(&mask);
+    }
     return;
 }
 
